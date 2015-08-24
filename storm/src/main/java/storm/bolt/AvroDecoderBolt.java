@@ -22,31 +22,64 @@ import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.TupleImpl;
 import kafka.message.Message;
 
+/**
+ * The purpose of this class is to decode a message from kafka by using an avro scheme
+ * @author senki
+ *
+ */
 public class AvroDecoderBolt extends BaseRichBolt {
-
+	/**
+	 * Serialization id
+	 */
 	private static final long serialVersionUID = 1L;
-
-	private OutputCollector _collector;
-	private Schema _schema;
 	
+	/**
+	 * Spout collector that is used to emit and ack storm messages
+	 */
+	private OutputCollector collector;
+	
+	/**
+	 * Avro scheme
+	 */
+	private Schema schema;
+	
+	/**
+	 * The name of the field in the avro scheme that contains the value on which the separation is done. 
+	 */
 	private final String RANDOM_FIELD_NAME;
 	
+	/**
+	 * Flag for indicating performance test mode
+	 */
 	private final boolean PERFORMANCE_TEST;
 	
-	public AvroDecoderBolt(boolean perftest, String randomFieldName) {
+	/**
+	 * Constructor
+	 * @param perftest flag for performance test mode
+	 * @param randomFieldName name of the field in the avro scheme that contains the value on which the separation is done. 
+	 */
+	public AvroDecoderBolt(String randomFieldName, boolean perftest) {
 		PERFORMANCE_TEST = perftest;
 		RANDOM_FIELD_NAME = randomFieldName;
 	}
 	
+	/**
+	 * Constructor without performance test mode
+	 * @param randomFieldName name of the field in the avro scheme that contains the value on which the separation is done. 
+	 */
 	public AvroDecoderBolt(String randomFieldName) {
-		this(false, randomFieldName);
+		this(randomFieldName, false);
 	}
 	
+	/**
+	 * Bolt prepare. Collector and avro schema is set.
+	 */
+	@Override
 	public void prepare(@SuppressWarnings("rawtypes") Map stormConf, TopologyContext context, OutputCollector collector) {
-		_collector = collector;
+		this.collector = collector;
         Schema.Parser parser = new Schema.Parser();
         try {
-            _schema = parser.parse(getClass().getResourceAsStream("/kafkatest.avsc"));
+            schema = parser.parse(getClass().getResourceAsStream("/kafkatest.avsc"));
 
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -54,7 +87,12 @@ public class AvroDecoderBolt extends BaseRichBolt {
 
 	}
 	
-	protected byte[] getMessage(Tuple input) {
+	/**
+	 * Helper function to obtain the byte array from kafka message
+	 * @param input tuple that contains kafka message
+	 * @return kafka message as byte array
+	 */
+	private byte[] getMessage(Tuple input) {
 		// Kafka message
 		Message message = new Message((byte[])((TupleImpl) input).get("bytes"));
 	
@@ -67,39 +105,51 @@ public class AvroDecoderBolt extends BaseRichBolt {
 	    return b;
 	}
 
+	/**
+	 * Bolt execution. Kafka message is transformed into avro schema to obtain the random field.
+	 * This random field is extracted and emitted together with the original kafka message.
+	 * It contains timestamp if {@link #PERFORMANCE_TEST} is set
+	 */
+	@Override
 	public void execute(Tuple input) {
-		
+		// value of random field
 		String random = null;
+		// binary kafka message
 		byte[] kafkaMessage = getMessage(input);
 		
         try {
-            DatumReader<GenericRecord> reader = new GenericDatumReader<GenericRecord>(_schema);
+        	// parsing kafka message based on the avro schema
+            DatumReader<GenericRecord> reader = new GenericDatumReader<GenericRecord>(schema);
 			Decoder decoder = DecoderFactory.get().binaryDecoder(kafkaMessage, null);
             GenericRecord result = reader.read(null, decoder);
             
-            // TODO: check format
             random = result.get(RANDOM_FIELD_NAME).toString();
-            
-            //System.out.println("Result: " + result);
-            //System.out.println("Goes to: " + random);
+            // format check
+            if(!random.matches("\\d+")) {
+            	throw new NumberFormatException("Value of " + RANDOM_FIELD_NAME + " is not a number");
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
         
-        
-        List<Object> delegatedTuple = new ArrayList<Object>(2);
+        // composing tuple to emit
+        List<Object> delegatedTuple = new ArrayList<Object>();
         delegatedTuple.add(random);
         // TODO: check if kafka message can be sent
-        delegatedTuple.add(new String(kafkaMessage));
+        //delegatedTuple.add(new String(kafkaMessage));
+        delegatedTuple.add(kafkaMessage);
         if(PERFORMANCE_TEST) {
         	delegatedTuple.add(input.getLongByField("timestamp"));
         }
-		_collector.emit(delegatedTuple);
-        _collector.ack(input);
+		collector.emit(delegatedTuple);
+        collector.ack(input);
 	}
 
+	/**
+	 * Output fields of the tuple. It contains timestamp if {@link #PERFORMANCE_TEST} is set
+	 */
+	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		// TODO: performance flag
 		List<String> fields = new ArrayList<String>();
 		fields.add("random");
 		fields.add("message");
