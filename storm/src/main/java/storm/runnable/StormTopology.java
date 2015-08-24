@@ -1,5 +1,8 @@
 package storm.runnable;
 
+import java.io.File;
+
+import java.io.FileInputStream;
 import java.util.Properties;
 
 import org.I0Itec.zkclient.ZkClient;
@@ -15,6 +18,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.utils.Utils;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
+import kafka.utils.ZKStringSerializer$;
 import storm.bolt.AvroDecoderBolt;
 import storm.bolt.KafkaBoltWithTimestamp;
 import storm.bolt.KafkaSpoutWithTimestamp;
@@ -32,26 +36,75 @@ import storm.kafka.bolt.KafkaBolt;
  *
  */
 public class StormTopology {
+	
+	/**
+	 * Application configuration
+	 */
+	private static Properties applicationConfiguration = new Properties();
+	
+	/**
+	 * Path offset to zookeeper root
+	 */
+    private static String zookeeperRoot;
+    /**
+     * Kafka consumer id
+     */
+    private static String consumerId;
+    /**
+     * Topic that is read
+     */
+    private static String sourceTopic;
+    /**
+     * Url to zookeeper
+     */
+    private static String zookeeper;
+    /**
+     * Url to kafka
+     */
+    private static String kafka;
+    /**
+     * Prefix for the target topics
+     */
+    private static String outputTopicNamePrefix;
+    /**
+     * Field name to check in the avro scheme
+     */
+    private static String randomFieldName;
+    /**
+     * Possible values for the selected field {@link #randomFieldName}
+     */
+    private static String[] randomValueSet;
+    /**
+     * Flag if verification is needed
+     */
+    private static boolean verify;
+    /**
+     * Flag if performance test is needed
+     */
+    private static boolean performance;
+    /**
+     * Flag if the cluster is local or remote
+     */
+    private static boolean local;
+    
 
     public static void main(String[] args) throws AlreadyAliveException, InvalidTopologyException {
-    	// TODO
-    	// arguments
-        final String offsetPath = "";
-        final String consumerId = "v1";
-        final String sourceTopic = "t";
-        final String zookeeper = "localhost:2181";
-        final String kafka = "172.17.42.1:9092";
-        final String outputTopicNamePrefix = "random_";
-        final String randomFieldName = "random";
-        final String[] randomValueSet = {"1","2","3"};
-        final boolean verify = true;
-        final boolean performance = false;
-        final boolean local = false;
-        
+    	if(args.length != 1) {
+    		throw new RuntimeException("Exactly one parameter is required: the path to the application configuration file");
+    	}
+    	String applicationConfigurationPath = args[0];
+		try {
+			applicationConfiguration.loadFromXML(new FileInputStream(new File(applicationConfigurationPath)));
+		} catch (Exception e) {
+			throw new RuntimeException("Application configuration file not found or cannot be parsed",e);
+		}
+		
+		setProperties();
+    	
         // zookeeper hosts
         ZkHosts zkHosts = new ZkHosts(zookeeper);
         // configuration for kafka
-        SpoutConfig kafkaConfig = new SpoutConfig(zkHosts, sourceTopic, offsetPath, consumerId);
+        SpoutConfig kafkaConfig = new SpoutConfig(zkHosts, sourceTopic, zookeeperRoot, consumerId);
         //kafkaConfig.forceFromStart = true;
 
         // kafka spout and bolt to read and write from/to kafka
@@ -66,12 +119,8 @@ public class StormTopology {
         
         // if verification is needed, topology is extended
         if(verify) {
-        	addVerification(builder, offsetPath, zookeeper, outputTopicNamePrefix, randomFieldName, consumerId, randomValueSet, zkHosts);
+        	addVerification(builder, zkHosts);
         }
-        
-        //builder.setBolt("kafka-output-bolt", new KafkaOutputBolt(zookeeper, outputTopicNamePrefix))
-        //	.shuffleGrouping("avro-decoder-bolt");
-        //builder.setBolt("syso-bolt", new SysoBolt()).shuffleGrouping("avro-decoder-bolt");
 
         // properties for kafka
         Properties props = new Properties();
@@ -102,7 +151,22 @@ public class StormTopology {
        
     }
     
-    /**
+    private static void setProperties() {
+    	// arguments
+        zookeeperRoot = applicationConfiguration.getProperty("zookeeper.rootpath", "");
+        consumerId = applicationConfiguration.getProperty("kafka.consumerid", "consumer_1");        
+        sourceTopic = applicationConfiguration.getProperty("kafka.sourcetopic", "neverwinter");
+        zookeeper = applicationConfiguration.getProperty("zookeeper.url", "localhost:2181");
+        kafka = applicationConfiguration.getProperty("kafka.url", "localhost:9092");
+        outputTopicNamePrefix = applicationConfiguration.getProperty("kafka.targettopicprefix", "random");
+        randomFieldName = applicationConfiguration.getProperty("avro.fieldname", "random");
+        randomValueSet = applicationConfiguration.getProperty("avro.valueset", "").split(",");
+        verify = Boolean.parseBoolean(applicationConfiguration.getProperty("verify", "false"));
+        performance = Boolean.parseBoolean(applicationConfiguration.getProperty("performance", "false"));
+        local = Boolean.parseBoolean(applicationConfiguration.getProperty("local", "true"));
+	}
+
+	/**
      * Selects {@link KafkaSpout} implementation based on the performance flag 
      * @param kafkaConfig kafka configuration
      * @param performance performance test is needed?
@@ -140,7 +204,7 @@ public class StormTopology {
     /**
      * Extends topology with the verification part
      * @param builder topology builder to extend
-     * @param offsetPath root path in zookeeper
+     * @param zookeeperRoot root path in zookeeper
      * @param zookeeper zookeeper url
      * @param zkHosts zookeeper hosts
      * @param outputTopicNamePrefix topic name prefix for the target topics
@@ -148,18 +212,16 @@ public class StormTopology {
      * @param consumerId name of the consumer
      * @param randomValueSet the possible values of the random field
      */
-	private static void addVerification(TopologyBuilder builder, final String offsetPath, final String zookeeper,
-			final String outputTopicNamePrefix, final String randomFieldName, final String consumerId,  final String[] randomValueSet,
-			ZkHosts zkHosts) {
+	private static void addVerification(TopologyBuilder builder, ZkHosts zkHosts) {
 		// creating aggregator bolt to collect output of verifier bolts
 		BoltDeclarer verifierAggregatorBolt = builder.setBolt("verifier-aggregator-bolt", new VerifierAggregatorBolt(outputTopicNamePrefix));
 		// looping through the valueset to create the verifier bolts for them
 		for(String value : randomValueSet) {
 			// creating target topic
 			String targetTopic = outputTopicNamePrefix + value;
-			createTopic(zookeeper, targetTopic);
+			createTopic(targetTopic);
 			// creating KafkaSpout for the target topic
-			SpoutConfig verifierConfig = new SpoutConfig(zkHosts, targetTopic, offsetPath, consumerId+targetTopic);
+			SpoutConfig verifierConfig = new SpoutConfig(zkHosts, targetTopic, zookeeperRoot, consumerId+targetTopic);
 		    KafkaSpout verifierSpout = new KafkaSpout(verifierConfig);
 		    // Verifier bolt for the target topic
 		    VerifierBolt verifierBolt = new VerifierBolt(value);
@@ -183,12 +245,12 @@ public class StormTopology {
 	 * @param zookeeper zookeeper url
 	 * @param targetTopic name of the topic to be created
 	 */
-	private static void createTopic(final String zookeeper, String targetTopic) {
+	private static void createTopic(String targetTopic) {
 		try {
-			ZkClient zkClient = new ZkClient(zookeeper);
+			ZkClient zkClient = new ZkClient(zookeeper, 10000, 10000, ZKStringSerializer$.MODULE$);
 			AdminUtils.createTopic(zkClient, targetTopic, 1, 1, new Properties());
 		} catch(TopicExistsException e) {
-			
+			System.out.println("TopicExists");
 		}
 	}
 
