@@ -6,7 +6,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import backtype.storm.generated.Bolt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
@@ -19,6 +21,8 @@ import backtype.storm.tuple.Tuple;
  *
  */
 public class VerifierAggregatorBolt extends BaseRichBolt {
+	
+	private final static Logger LOGGER = LoggerFactory.getLogger(VerifierAggregatorBolt.class);
 	
 	/**
 	 * Serialization id
@@ -118,7 +122,7 @@ public class VerifierAggregatorBolt extends BaseRichBolt {
 		
 		for(Entry<String, Result> entry : results.entrySet()) {
 			String not = entry.getValue().isVerified() ? " " : "NOT ";
-			System.out.println("Topic " + entry.getKey() + " is " + not + "VERIFIED at " + entry.getValue().getTime());			
+			LOGGER.info("Topic {} is {}VERIFIED at {}", entry.getKey(), not, entry.getValue().getTime());			
 		}
 		
 		collector.ack(input);

@@ -1,5 +1,8 @@
 package storm.bolt;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import backtype.storm.tuple.Tuple;
 import storm.kafka.bolt.KafkaBolt;
 
@@ -12,6 +15,8 @@ import storm.kafka.bolt.KafkaBolt;
  * @param <V> Value type
  */
 public class KafkaBoltWithTimestamp<K,V> extends KafkaBolt<K, V> {
+	
+	private final static Logger LOGGER = LoggerFactory.getLogger(KafkaBoltWithTimestamp.class);
 	/**
 	 * Serialization id
 	 */
@@ -50,13 +55,11 @@ public class KafkaBoltWithTimestamp<K,V> extends KafkaBolt<K, V> {
 		double averageThroughputRecords = 1000*n/averageTime;
 		double averageThroughputBytes = averageSize*averageThroughputRecords;
 		
-		System.out.println(
-			//"======= Elapsed time (ms): " + String.valueOf(ms) 
-			//+ "\nAvg of " + n + " messages: " + String.valueOf(averageTime)
-			//+ "\nAvg size of " + n + " messages: " + String.valueOf(averageSize) + " bytes"
-			//+ 
-			"\nAvg throughput of " + n + " messages: " + String.valueOf(averageThroughputBytes) + " bytes/second"
-			+ "\nAvg throughput of " + n + " messages: " + String.valueOf(averageThroughputRecords) + " records/second"
+		LOGGER.info(
+			"\nAvg throughput of " + n + " messages: {} bytes/second"
+			+ "\nAvg throughput of " + n + " messages: {} records/second",
+			n, String.valueOf(averageThroughputBytes),
+			n, String.valueOf(averageThroughputRecords)
 		);
 	}
 }
