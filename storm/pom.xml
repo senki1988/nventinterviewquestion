@@ -62,9 +62,6 @@
         </executions>
 	    <configuration>
           <descriptor>src/assembly/dep.xml</descriptor>
-	      <!--<descriptorRefs>  
-	        <descriptorRef>jar-with-dependencies-storm</descriptorRef>
-	      </descriptorRefs>-->
 	      <archive>
 	        <manifest>
 	          <mainClass>storm.runnable.StormTopology</mainClass>
