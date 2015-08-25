@@ -1,4 +1,4 @@
-package storm.bolt;
+package storm.spout.perftest;
 
 import java.util.ArrayList;
 import java.util.Arrays;

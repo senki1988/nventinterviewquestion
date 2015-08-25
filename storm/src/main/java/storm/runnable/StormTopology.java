@@ -20,15 +20,15 @@ import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZKStringSerializer$;
 import storm.bolt.AvroDecoderBolt;
-import storm.bolt.KafkaBoltWithTimestamp;
-import storm.bolt.KafkaSpoutWithTimestamp;
 import storm.bolt.SimpleTopicSelector;
 import storm.bolt.VerifierAggregatorBolt;
 import storm.bolt.VerifierBolt;
+import storm.bolt.perftest.KafkaBoltWithTimestamp;
 import storm.kafka.KafkaSpout;
 import storm.kafka.SpoutConfig;
 import storm.kafka.ZkHosts;
 import storm.kafka.bolt.KafkaBolt;
+import storm.spout.perftest.KafkaSpoutWithTimestamp;
 
 /**
  * The purpose of this class is to built up a topology and run it on a local or remote storm cluster

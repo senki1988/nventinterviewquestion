@@ -1,4 +1,4 @@
-package storm.bolt;
+package storm.bolt.perftest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
