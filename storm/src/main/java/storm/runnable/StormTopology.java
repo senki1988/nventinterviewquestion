@@ -100,6 +100,9 @@ public class StormTopology {
 		}
 		
 		setProperties();
+		
+		// creating source topic if it does not exist
+		createTopic(sourceTopic);
     	
         // zookeeper hosts
         ZkHosts zkHosts = new ZkHosts(zookeeper);
