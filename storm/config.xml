@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+	<comment>Application configuration for storm topology application</comment>
+	<entry key="zookeeper.rootpath"></entry>
+	<entry key="zookeeper.url">localhost:2181</entry>
+	<entry key="kafka.url">172.17.42.1:9092</entry>
+	<entry key="kafka.consumerid">consumer_1</entry>
+	<entry key="kafka.sourcetopic">neverwinter</entry>
+	<entry key="kafka.targettopicprefix">random</entry>
+	<entry key="avro.fieldname">random</entry>
+	<entry key="avro.valueset">1,2,3</entry>
+	<entry key="verify">true</entry>
+	<entry key="performance">false</entry>
+	<entry key="local">true</entry>
+</properties>
