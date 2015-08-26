@@ -128,7 +128,6 @@ public class StormTopology {
         // properties for kafka
         Properties props = new Properties();
         props.put("metadata.broker.list", kafka);
-        props.put("broker.list", kafka);
         props.put("producer.type", "sync");
         props.put("batch.size", "1");
         props.put("zk.connect", zookeeper); 
