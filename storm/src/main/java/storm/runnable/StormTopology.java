@@ -154,6 +154,9 @@ public class StormTopology {
        
     }
     
+    /**
+     * Sets properties based on the given configuration and default values
+     */
     private static void setProperties() {
     	// arguments
         zookeeperRoot = applicationConfiguration.getProperty("zookeeper.rootpath", "");
