@@ -253,7 +253,7 @@ public class StormTopology {
 			ZkClient zkClient = new ZkClient(zookeeper, 10000, 10000, ZKStringSerializer$.MODULE$);
 			AdminUtils.createTopic(zkClient, targetTopic, 1, 1, new Properties());
 		} catch(TopicExistsException e) {
-			System.out.println("TopicExists");
+			
 		}
 	}
 

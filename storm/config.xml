@@ -4,7 +4,7 @@
 	<comment>Application configuration for storm topology application</comment>
 	<entry key="zookeeper.rootpath"></entry>
 	<entry key="zookeeper.url">localhost:2181</entry>
-	<entry key="kafka.url">172.17.42.1:9092</entry>
+	<entry key="kafka.url">localhost:9092</entry>
 	<entry key="kafka.consumerid">consumer_1</entry>
 	<entry key="kafka.sourcetopic">neverwinter</entry>
 	<entry key="kafka.targettopicprefix">random</entry>

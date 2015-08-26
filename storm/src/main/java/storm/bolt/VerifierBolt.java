@@ -61,8 +61,8 @@ public class VerifierBolt extends BaseRichBolt {
 	@Override
 	public void execute(Tuple input) {
 		// source messages are received by all the VerifierBolts, 
-		// but a filtering on the given random value is needed
-		if(!VALUE.equals(input.getStringByField("random"))) {
+		// but a filtering on the given random value is needed for the messages from the source topic
+		if(!VALUE.equals(input.getStringByField("random")) && !input.getSourceComponent().startsWith("verifier")) {
 			collector.ack(input);
 			return;
 		}
