@@ -73,7 +73,7 @@ public class AvroSchema implements DeserializationSchema<GenericRecord>, Seriali
 	@Override
 	public byte[] serialize(GenericRecord element) {
 		try {
-			DatumWriter<GenericRecord> writer = new GenericDatumWriter<GenericRecord>();
+			DatumWriter<GenericRecord> writer = new GenericDatumWriter<GenericRecord>(schema);
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
 			binaryEncoder = EncoderFactory.get().binaryEncoder(out, binaryEncoder);
 			writer.write(element, binaryEncoder);

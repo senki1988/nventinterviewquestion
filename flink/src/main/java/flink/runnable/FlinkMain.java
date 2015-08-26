@@ -23,6 +23,7 @@ import flink.schema.AvroSchema;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.consumer.ConsumerConfig;
+import kafka.producer.ProducerConfig;
 import kafka.utils.ZKStringSerializer$;
 
 public class FlinkMain {
@@ -100,11 +101,11 @@ public class FlinkMain {
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 		env.enableCheckpointing(5000);
 
-		Properties props = new Properties();
-        props.put("zookeeper.connect", zookeeper); 
-        props.put("group.id", "consumer_flink");
-        props.put("auto.commit.enable", "false");
-		ConsumerConfig consumerConfig = new ConsumerConfig(props);
+		Properties consumerProps = new Properties();
+        consumerProps.put("zookeeper.connect", zookeeper); 
+        consumerProps.put("group.id", "consumer_flink");
+        consumerProps.put("auto.commit.enable", "false");
+		ConsumerConfig consumerConfig = new ConsumerConfig(consumerProps);
 		
 		ExtractFieldFlatMapper flatMapper = new ExtractFieldFlatMapper(randomFieldName);
 		DataStream<GenericRecord> stream = env
@@ -115,12 +116,19 @@ public class FlinkMain {
 		SplitDataStream<GenericRecord> split = stream.split(topicSelector);
 		for(String value : randomValueSet) {
 			DataStream<GenericRecord> targetTopicStream = split.select(value);
-			targetTopicStream.addSink(new KafkaSink<GenericRecord>(zookeeper, outputTopicNamePrefix+value, new AvroSchema()));
+			Properties producerProps = new Properties();
+	        producerProps.put("metadata.broker.list", kafka);
+	        producerProps.put("broker.list", kafka);
+	        producerProps.put("producer.type", "sync");
+	        producerProps.put("batch.size", "1");
+	        producerProps.put("zk.connect", zookeeper); 
+	        producerProps.put("broker.id", 0); 
+			targetTopicStream.addSink(new KafkaSink<GenericRecord>(zookeeper, outputTopicNamePrefix+value, producerProps, new AvroSchema()));
 		}
 		
-		System.out.println(env.getExecutionPlan());
+		//System.out.println(env.getExecutionPlan());
 		
-		//env.execute("Flink stream");
+		env.execute("Flink stream");
 		
 		
     }
