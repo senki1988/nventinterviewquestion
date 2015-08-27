@@ -2,10 +2,9 @@ package flink.function;
 
 import java.util.Arrays;
 
-import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.streaming.api.collector.selector.OutputSelector;
 
-public class ClonerSelector implements OutputSelector<GenericRecord> {
+public class ClonerSelector implements OutputSelector<byte[]> {
 
 	/**
 	 * Serialization ID
@@ -13,10 +12,10 @@ public class ClonerSelector implements OutputSelector<GenericRecord> {
 	private static final long serialVersionUID = 1L;
 	
 	/**
-	 * Select topic based on the value of the field {@link #RANDOM_FIELD_NAME}
+	 * Splits stream to first and second
 	 */
 	@Override
-	public Iterable<String> select(GenericRecord value) {
+	public Iterable<String> select(byte[] value) {
 		return Arrays.asList("first", "second");
 	}
 

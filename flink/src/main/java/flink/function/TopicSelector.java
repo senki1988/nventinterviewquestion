@@ -11,7 +11,7 @@ import org.apache.flink.streaming.api.collector.selector.OutputSelector;
  * @author senki
  *
  */
-public class TopicSelector implements OutputSelector<Tuple2<String, GenericRecord>> {
+public class TopicSelector implements OutputSelector<Tuple2<String, byte[]>> {
 
 	/**
 	 * Serialization ID
@@ -22,7 +22,7 @@ public class TopicSelector implements OutputSelector<Tuple2<String, GenericRecor
 	 * Returns the first value of the tuple, that contains the value for the random field
 	 */
 	@Override
-	public Iterable<String> select(Tuple2<String, GenericRecord> value) {
+	public Iterable<String> select(Tuple2<String, byte[]> value) {
 		return Arrays.asList(value.f0);
 	}
 

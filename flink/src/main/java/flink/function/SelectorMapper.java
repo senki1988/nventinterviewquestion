@@ -10,7 +10,7 @@ import org.apache.flink.util.Collector;
  * @author senki
  *
  */
-public class SelectorMapper implements FlatMapFunction<Tuple2<String, GenericRecord>, GenericRecord> {
+public class SelectorMapper implements FlatMapFunction<Tuple2<String, byte[]>, byte[]> {
 
 	/**
 	 * Serialization ID
@@ -21,7 +21,7 @@ public class SelectorMapper implements FlatMapFunction<Tuple2<String, GenericRec
 	 * Selecting only the GenericRecord part of the tuple
 	 */
 	@Override
-	public void flatMap(Tuple2<String, GenericRecord> value, Collector<GenericRecord> out) {
+	public void flatMap(Tuple2<String, byte[]> value, Collector<byte[]> out) {
 		out.collect(value.f1);
 	}
 

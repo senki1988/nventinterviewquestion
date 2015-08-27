@@ -16,6 +16,7 @@ import org.apache.flink.streaming.api.datastream.SplitDataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.api.KafkaSink;
 import org.apache.flink.streaming.connectors.kafka.api.persistent.PersistentKafkaSource;
+import org.apache.flink.streaming.util.serialization.RawSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,19 +105,19 @@ public class FlinkMain {
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 		env.enableCheckpointing(5000);
 
-		DataStream<GenericRecord> stream = env.addSource(createKafkaSource(), sourceTopic);
-		if(false && verify) {
-			SplitDataStream<GenericRecord> splitsForVerification = stream.split(new ClonerSelector());
+		DataStream<byte[]> stream = env.addSource(createKafkaSource(), sourceTopic);
+		/*if(false && verify) {
+			SplitDataStream<byte[]> splitsForVerification = stream.split(new ClonerSelector());
 			stream = splitsForVerification.select("first");
-			DataStream<GenericRecord> verifierStream = splitsForVerification.select("second");
-		}
-		GroupedDataStream<Tuple2<String, GenericRecord>> groupedStream = stream.flatMap(new ExtractFieldFlatMapper(randomFieldName)).groupBy(0); // grouping by random field value
+			DataStream<byte[]> verifierStream = splitsForVerification.select("second");
+		}*/
+		GroupedDataStream<Tuple2<String, byte[]>> groupedStream = stream.flatMap(new ExtractFieldFlatMapper(randomFieldName)).groupBy(0); // grouping by random field value
 		
 		TopicSelector topicSelector = new TopicSelector();
-		SplitDataStream<Tuple2<String, GenericRecord>> split = groupedStream.split(topicSelector);
+		SplitDataStream<Tuple2<String, byte[]>> split = groupedStream.split(topicSelector);
 		for(String value : randomValueSet) {
-			DataStream<Tuple2<String, GenericRecord>> targetTopicStream = split.select(value);
-			DataStream<GenericRecord> transformedStream = targetTopicStream.flatMap(new SelectorMapper());
+			DataStream<Tuple2<String, byte[]>> targetTopicStream = split.select(value);
+			DataStream<byte[]> transformedStream = targetTopicStream.flatMap(new SelectorMapper());
 			transformedStream.addSink(createKafkaSink(value));
 		}
 		
@@ -128,14 +129,14 @@ public class FlinkMain {
 	 * Creates kafka source for the topic {@link #sourceTopic}
 	 * @return kafka source
 	 */
-	private static PersistentKafkaSource<GenericRecord> createKafkaSource() {
+	private static PersistentKafkaSource<byte[]> createKafkaSource() {
 		Properties consumerProps = new Properties();
         consumerProps.put("zookeeper.connect", zookeeper+zookeeperRoot); 
         consumerProps.put("group.id", consumerId);
         consumerProps.put("auto.commit.enable", "false");
 		ConsumerConfig consumerConfig = new ConsumerConfig(consumerProps);
 		
-		return new PersistentKafkaSource<GenericRecord>(sourceTopic, new AvroSchema(), consumerConfig);
+		return new PersistentKafkaSource<byte[]>(sourceTopic, new RawSchema(), consumerConfig);
 	}
 
 	/**
@@ -143,7 +144,7 @@ public class FlinkMain {
 	 * @param value value of the random field
 	 * @return kafka sink for the topic that blongs to the value
 	 */
-	private static KafkaSink<GenericRecord> createKafkaSink(String value) {
+	private static KafkaSink<byte[]> createKafkaSink(String value) {
 		Properties producerProps = new Properties();
 		producerProps.put("metadata.broker.list", kafka);
 		producerProps.put("producer.type", "sync");
@@ -151,7 +152,7 @@ public class FlinkMain {
 		producerProps.put("zk.connect", zookeeper+zookeeperRoot); 
 		producerProps.put("broker.id", 0); 
 		
-		return new KafkaSink<GenericRecord>(kafka, outputTopicNamePrefix+value, producerProps, new AvroSchema());
+		return new KafkaSink<byte[]>(kafka, outputTopicNamePrefix+value, producerProps, new RawSchema());
 	}
 	
 	/**
