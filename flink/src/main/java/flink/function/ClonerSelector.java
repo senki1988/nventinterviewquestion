@@ -4,6 +4,11 @@ import java.util.Arrays;
 
 import org.apache.flink.streaming.api.collector.selector.OutputSelector;
 
+/**
+ * Splits kafka message stream
+ * @author senki
+ *
+ */
 public class ClonerSelector implements OutputSelector<byte[]> {
 
 	/**

@@ -5,13 +5,9 @@ import java.io.FileInputStream;
 import java.util.Properties;
 
 import org.I0Itec.zkclient.ZkClient;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.streaming.api.collector.selector.OutputSelector;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.GroupedDataStream;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.datastream.SplitDataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.api.KafkaSink;
@@ -20,15 +16,12 @@ import org.apache.flink.streaming.util.serialization.RawSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import flink.function.ClonerSelector;
 import flink.function.ExtractFieldFlatMapper;
 import flink.function.SelectorMapper;
 import flink.function.TopicSelector;
-import flink.schema.AvroSchema;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.consumer.ConsumerConfig;
-import kafka.producer.ProducerConfig;
 import kafka.utils.ZKStringSerializer$;
 
 public class FlinkMain {
