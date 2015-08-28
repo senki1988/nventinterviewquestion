@@ -14,12 +14,12 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.api.KafkaSink;
 import org.apache.flink.streaming.connectors.kafka.api.persistent.PersistentKafkaSource;
 import org.apache.flink.streaming.util.serialization.RawSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import flink.filter.FilterByValue;
 import flink.mapper.ExtractFieldFlatMapper;
 import flink.mapper.ExtractMessageMapper;
+import flink.performance.PerformanceKafkaSink;
+import flink.performance.PerformanceRawSchema;
 import flink.selector.ClonerSelector;
 import flink.selector.TopicSelector;
 import flink.sink.VerifierSink;
@@ -29,8 +29,6 @@ import kafka.consumer.ConsumerConfig;
 import kafka.utils.ZKStringSerializer$;
 
 public class FlinkMain {
-	
-	private static final Logger LOG = LoggerFactory.getLogger(FlinkMain.class);
 	
 	/**
 	 * Application configuration
@@ -77,10 +75,6 @@ public class FlinkMain {
      * Flag if performance test is needed
      */
     private static boolean performance;
-    /**
-     * Flag if the cluster is local or remote
-     */
-    private static boolean local;
 	
 	public static void main(String[] args) throws Exception {
 		
@@ -175,8 +169,7 @@ public class FlinkMain {
         consumerProps.put("group.id", consumerId);
         consumerProps.put("auto.commit.enable", "false");
 		ConsumerConfig consumerConfig = new ConsumerConfig(consumerProps);
-		
-		return new PersistentKafkaSource<byte[]>(topic, new RawSchema(), consumerConfig);
+		return new PersistentKafkaSource<byte[]>(topic, performance ? new PerformanceRawSchema() : new RawSchema(), consumerConfig);
 	}
 
 	/**
@@ -192,7 +185,11 @@ public class FlinkMain {
 		producerProps.put("zk.connect", zookeeper+zookeeperRoot); 
 		producerProps.put("broker.id", 0); 
 		
-		return new KafkaSink<byte[]>(kafka, topic, producerProps, new RawSchema());
+		if(performance) {
+			return new PerformanceKafkaSink<byte[]>(kafka, topic, producerProps, new RawSchema());
+		} else {
+			return new KafkaSink<byte[]>(kafka, topic, producerProps, new RawSchema());
+		}
 	}
 	
 	/**
@@ -210,7 +207,6 @@ public class FlinkMain {
         randomValueSet = applicationConfiguration.getProperty("avro.valueset", "").split(",");
         verify = Boolean.parseBoolean(applicationConfiguration.getProperty("verify", "false"));
         performance = Boolean.parseBoolean(applicationConfiguration.getProperty("performance", "false"));
-        local = Boolean.parseBoolean(applicationConfiguration.getProperty("local", "true"));
 	}
     
     /**
