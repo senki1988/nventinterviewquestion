@@ -18,10 +18,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import flink.filter.FilterByValue;
-import flink.function.ClonerSelector;
-import flink.function.ExtractFieldFlatMapper;
-import flink.function.ExtractMessageMapper;
-import flink.function.TopicSelector;
+import flink.mapper.ExtractFieldFlatMapper;
+import flink.mapper.ExtractMessageMapper;
+import flink.selector.ClonerSelector;
+import flink.selector.TopicSelector;
 import flink.sink.VerifierSink;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;

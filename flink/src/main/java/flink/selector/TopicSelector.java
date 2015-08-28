@@ -1,4 +1,4 @@
-package flink.function;
+package flink.selector;
 
 import java.util.Arrays;
 

@@ -1,4 +1,4 @@
-package flink.function;
+package flink.mapper;
 
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;

@@ -10,7 +10,7 @@ import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.flink.api.common.functions.FilterFunction;
 
-import flink.function.ExtractFieldFlatMapper;
+import flink.mapper.ExtractFieldFlatMapper;
 
 public class FilterByValue implements FilterFunction<byte[]> {
 

@@ -1,4 +1,4 @@
-package flink.function;
+package flink.mapper;
 
 import java.io.IOException;
 
