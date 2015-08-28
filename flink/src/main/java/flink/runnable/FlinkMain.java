@@ -7,6 +7,7 @@ import java.util.Properties;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.streaming.api.datastream.GroupedDataStream;
 import org.apache.flink.streaming.api.datastream.SplitDataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -16,9 +17,12 @@ import org.apache.flink.streaming.util.serialization.RawSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import flink.filter.FilterByValue;
+import flink.function.ClonerSelector;
 import flink.function.ExtractFieldFlatMapper;
 import flink.function.SelectorMapper;
 import flink.function.TopicSelector;
+import flink.sink.VerifierSink;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.consumer.ConsumerConfig;
@@ -92,26 +96,36 @@ public class FlinkMain {
 		
 		setProperties();
 		
-		// creating source topic if it does not exist
-		createTopic(sourceTopic);
-		
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-		env.enableCheckpointing(5000);
+		//env.enableCheckpointing(5000);
 
-		DataStream<byte[]> stream = env.addSource(createKafkaSource(), sourceTopic);
-		/*if(false && verify) {
-			SplitDataStream<byte[]> splitsForVerification = stream.split(new ClonerSelector());
-			stream = splitsForVerification.select("first");
-			DataStream<byte[]> verifierStream = splitsForVerification.select("second");
-		}*/
-		GroupedDataStream<Tuple2<String, byte[]>> groupedStream = stream.flatMap(new ExtractFieldFlatMapper(randomFieldName)).groupBy(0); // grouping by random field value
+		DataStream<byte[]> sourceTopicStream = env.addSource(createKafkaSource(sourceTopic), sourceTopic);
+		SplitDataStream<byte[]> splitsForVerification = null;
+		if(verify) {
+			splitsForVerification = sourceTopicStream.split(new ClonerSelector(randomValueSet.length+1));
+			sourceTopicStream = splitsForVerification.select("0");
+		}
+		GroupedDataStream<Tuple2<String, byte[]>> groupedStream = sourceTopicStream.flatMap(new ExtractFieldFlatMapper(randomFieldName)).groupBy(0); // grouping by random field value
 		
 		TopicSelector topicSelector = new TopicSelector();
 		SplitDataStream<Tuple2<String, byte[]>> split = groupedStream.split(topicSelector);
 		for(String value : randomValueSet) {
 			DataStream<Tuple2<String, byte[]>> targetTopicStream = split.select(value);
 			DataStream<byte[]> transformedStream = targetTopicStream.flatMap(new SelectorMapper());
-			transformedStream.addSink(createKafkaSink(value));
+			transformedStream.addSink(createKafkaSink(outputTopicNamePrefix+value));
+		}
+		
+		int splitIndex = 0;
+		if(verify) {
+			for(String value : randomValueSet) {
+				DataStream<byte[]> verifierStream = splitsForVerification.select(String.valueOf(++splitIndex));
+				DataStream<byte[]> filteredStream = verifierStream.filter(new FilterByValue(value, randomFieldName));
+				String targetTopic = outputTopicNamePrefix+value;
+				DataStream<byte[]> targetTopicSource = env.addSource(createKafkaSource(targetTopic), targetTopic);
+				
+				DataStreamSink<byte[]> verifierSink = targetTopicSource.union(filteredStream).addSink(new VerifierSink(value));
+				verifierSink.setParallelism(1);
+			}
 		}
 		
 		//System.out.println(env.getExecutionPlan());
@@ -122,14 +136,17 @@ public class FlinkMain {
 	 * Creates kafka source for the topic {@link #sourceTopic}
 	 * @return kafka source
 	 */
-	private static PersistentKafkaSource<byte[]> createKafkaSource() {
+	private static PersistentKafkaSource<byte[]> createKafkaSource(String topic) {
+		// creating source topic if it does not exist
+		createTopic(topic);
+		
 		Properties consumerProps = new Properties();
         consumerProps.put("zookeeper.connect", zookeeper+zookeeperRoot); 
         consumerProps.put("group.id", consumerId);
         consumerProps.put("auto.commit.enable", "false");
 		ConsumerConfig consumerConfig = new ConsumerConfig(consumerProps);
 		
-		return new PersistentKafkaSource<byte[]>(sourceTopic, new RawSchema(), consumerConfig);
+		return new PersistentKafkaSource<byte[]>(topic, new RawSchema(), consumerConfig);
 	}
 
 	/**
@@ -137,7 +154,7 @@ public class FlinkMain {
 	 * @param value value of the random field
 	 * @return kafka sink for the topic that blongs to the value
 	 */
-	private static KafkaSink<byte[]> createKafkaSink(String value) {
+	private static KafkaSink<byte[]> createKafkaSink(String topic) {
 		Properties producerProps = new Properties();
 		producerProps.put("metadata.broker.list", kafka);
 		producerProps.put("producer.type", "sync");
@@ -145,7 +162,7 @@ public class FlinkMain {
 		producerProps.put("zk.connect", zookeeper+zookeeperRoot); 
 		producerProps.put("broker.id", 0); 
 		
-		return new KafkaSink<byte[]>(kafka, outputTopicNamePrefix+value, producerProps, new RawSchema());
+		return new KafkaSink<byte[]>(kafka, topic, producerProps, new RawSchema());
 	}
 	
 	/**
