@@ -85,7 +85,7 @@ public class KafkaBoltWithTimestamp<K,V> extends KafkaBolt<K, V> {
 		double averageThroughputBytes = averageSize*averageThroughputRecords;
 		
 		LOGGER.info(
-			  "\nAvg single message time based on {} messages: {} bytes/second"
+			  "\nAvg single message time based on {} messages: {} ms"
 			+ "\nAvg throughput of {} messages: {} bytes/second"
 			+ "\nAvg throughput of {} messages: {} records/second",
 			n, averageTime,
