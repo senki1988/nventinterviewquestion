@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 import flink.filter.FilterByValue;
 import flink.function.ClonerSelector;
 import flink.function.ExtractFieldFlatMapper;
-import flink.function.SelectorMapper;
+import flink.function.ExtractMessageMapper;
 import flink.function.TopicSelector;
 import flink.sink.VerifierSink;
 import kafka.admin.AdminUtils;
@@ -84,6 +84,43 @@ public class FlinkMain {
 	
 	public static void main(String[] args) throws Exception {
 		
+		checkArgs(args);
+		
+		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+		//env.enableCheckpointing(5000);
+
+		// kafka message stream
+		DataStream<byte[]> sourceTopicStream = env.addSource(createKafkaSource(sourceTopic), sourceTopic);
+		
+		// kafka message is enhanced with the value of random field
+		// and grouping by random field value
+		GroupedDataStream<Tuple2<String, byte[]>> groupedStream = 
+				sourceTopicStream.flatMap(new ExtractFieldFlatMapper(randomFieldName)).groupBy(0); 
+		
+		// based on the random field value, topicSelector splits the stream
+		SplitDataStream<Tuple2<String, byte[]>> split = groupedStream.split(new TopicSelector());
+		for(String value : randomValueSet) {
+			// each split is for a value
+			DataStream<Tuple2<String, byte[]>> targetTopicStream = split.select(value);
+			// extracting kafka message
+			DataStream<byte[]> transformedStream = targetTopicStream.flatMap(new ExtractMessageMapper());
+			// send it to the correct topic
+			transformedStream.addSink(createKafkaSink(outputTopicNamePrefix+value));
+		}
+		
+		if(verify) {
+			addVerification(env, sourceTopicStream);
+		}
+		
+		//System.out.println(env.getExecutionPlan());
+		env.execute("Flink stream");
+    }
+
+	/**
+	 * Checking arguments and setting properties
+	 * @param args application arguments
+	 */
+	private static void checkArgs(String[] args) {
 		if(args.length != 1) {
     		throw new RuntimeException("Exactly one parameter is required: the path to the application configuration file");
     	}
@@ -95,42 +132,35 @@ public class FlinkMain {
 		}
 		
 		setProperties();
-		
-		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-		//env.enableCheckpointing(5000);
+	}
 
-		DataStream<byte[]> sourceTopicStream = env.addSource(createKafkaSource(sourceTopic), sourceTopic);
-		SplitDataStream<byte[]> splitsForVerification = null;
-		if(verify) {
-			splitsForVerification = sourceTopicStream.split(new ClonerSelector(randomValueSet.length+1));
-			sourceTopicStream = splitsForVerification.select("0");
-		}
-		GroupedDataStream<Tuple2<String, byte[]>> groupedStream = sourceTopicStream.flatMap(new ExtractFieldFlatMapper(randomFieldName)).groupBy(0); // grouping by random field value
-		
-		TopicSelector topicSelector = new TopicSelector();
-		SplitDataStream<Tuple2<String, byte[]>> split = groupedStream.split(topicSelector);
-		for(String value : randomValueSet) {
-			DataStream<Tuple2<String, byte[]>> targetTopicStream = split.select(value);
-			DataStream<byte[]> transformedStream = targetTopicStream.flatMap(new SelectorMapper());
-			transformedStream.addSink(createKafkaSink(outputTopicNamePrefix+value));
-		}
-		
+	/**
+	 * Adds verification part to the topology
+	 * @param env flink stream execution environment
+	 * @param sourceTopicStream source datastream from kafka topic
+	 */
+	private static void addVerification(final StreamExecutionEnvironment env, DataStream<byte[]> sourceTopicStream) {
+		// index for the current split
 		int splitIndex = 0;
-		if(verify) {
-			for(String value : randomValueSet) {
-				DataStream<byte[]> verifierStream = splitsForVerification.select(String.valueOf(++splitIndex));
-				DataStream<byte[]> filteredStream = verifierStream.filter(new FilterByValue(value, randomFieldName));
-				String targetTopic = outputTopicNamePrefix+value;
-				DataStream<byte[]> targetTopicSource = env.addSource(createKafkaSource(targetTopic), targetTopic);
-				
-				DataStreamSink<byte[]> verifierSink = targetTopicSource.union(filteredStream).addSink(new VerifierSink(value));
-				verifierSink.setParallelism(1);
-			}
+		// splitting the original stream to the number of target topics +1
+		SplitDataStream<byte[]> splitsForVerification = sourceTopicStream.split(new ClonerSelector(randomValueSet.length+1));
+		// first stream is the original
+		sourceTopicStream = splitsForVerification.select(String.valueOf(splitIndex));
+		// the other splits are assigned to the verifier streams
+		for(String value : randomValueSet) {
+			String targetTopic = outputTopicNamePrefix+value;
+			// get the next split of the stream
+			DataStream<byte[]> verifierStream = splitsForVerification.select(String.valueOf(++splitIndex));
+			// filter by value
+			DataStream<byte[]> filteredStream = verifierStream.filter(new FilterByValue(value, randomFieldName));
+			// reading from the target tooic
+			DataStream<byte[]> targetTopicSource = env.addSource(createKafkaSource(targetTopic), targetTopic);
+			// merge the splitted stream and the target topic stream to a verifier sink
+			DataStreamSink<byte[]> verifierSink = targetTopicSource.union(filteredStream).addSink(new VerifierSink(value));
+			// paralellism is set to 1, to make it easier to handle verification buffer
+			verifierSink.setParallelism(1);
 		}
-		
-		//System.out.println(env.getExecutionPlan());
-		env.execute("Flink stream");
-    }
+	}
 
 	/**
 	 * Creates kafka source for the topic {@link #sourceTopic}

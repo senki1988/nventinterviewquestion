@@ -9,7 +9,7 @@ import org.apache.flink.util.Collector;
  * @author senki
  *
  */
-public class SelectorMapper implements FlatMapFunction<Tuple2<String, byte[]>, byte[]> {
+public class ExtractMessageMapper implements FlatMapFunction<Tuple2<String, byte[]>, byte[]> {
 
 	/**
 	 * Serialization ID

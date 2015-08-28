@@ -7,6 +7,12 @@ import java.util.List;
 
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 
+/**
+ * The purpose of this class is to verify results by 
+ * matching records from the source topic and the given target topic
+ * @author senki
+ *
+ */
 public class VerifierSink implements SinkFunction<byte[]> {
 
 	/**
@@ -33,8 +39,12 @@ public class VerifierSink implements SinkFunction<byte[]> {
 		this.TOPIC = topic;
 	}
 
+	/**
+	 * Handles buffer and creates report
+	 */
 	@Override
 	public void invoke(byte[] value) throws Exception {	
+		// string conversion to be able to use ".contains()"
 		String valueString = new String(value);
 		
 		if (buffer.contains(valueString)) {
