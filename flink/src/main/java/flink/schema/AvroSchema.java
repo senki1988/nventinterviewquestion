@@ -33,7 +33,7 @@ public class AvroSchema implements DeserializationSchema<GenericRecord>, Seriali
 	/**
 	 * Avro schema
 	 */
-	private static Schema schema;
+	/*private static Schema schema;
 	static {
 		Schema.Parser parser = new Schema.Parser();
 		try {
@@ -41,7 +41,7 @@ public class AvroSchema implements DeserializationSchema<GenericRecord>, Seriali
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-	}
+	}*/
 
 	private BinaryEncoder binaryEncoder = null;
 
@@ -58,6 +58,13 @@ public class AvroSchema implements DeserializationSchema<GenericRecord>, Seriali
 	 */
 	@Override
 	public GenericRecord deserialize(byte[] message) {
+		Schema.Parser parser = new Schema.Parser();
+		Schema schema = null;
+		try {
+			schema = parser.parse(AvroSchema.class.getResourceAsStream("/kafkatest.avsc"));
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 		try {
 			DatumReader<GenericRecord> reader = new GenericDatumReader<GenericRecord>(schema);
 			Decoder decoder = DecoderFactory.get().binaryDecoder(message, null);
@@ -72,6 +79,13 @@ public class AvroSchema implements DeserializationSchema<GenericRecord>, Seriali
 	 */
 	@Override
 	public byte[] serialize(GenericRecord element) {
+		Schema.Parser parser = new Schema.Parser();
+		Schema schema = null;
+		try {
+			schema = parser.parse(AvroSchema.class.getResourceAsStream("/kafkatest.avsc"));
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 		try {
 			DatumWriter<GenericRecord> writer = new GenericDatumWriter<GenericRecord>(schema);
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
