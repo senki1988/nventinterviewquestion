@@ -75,7 +75,7 @@ public class KafkaBoltWithTimestamp<K,V> extends KafkaBolt<K, V> {
 		double messageTime = (end-start)/1000000.0;
 		++n;
 		
-		int messageSize = input.getBinaryByField("message").length;
+		int messageSize = 23; //input.getBinaryByField("message").length;
 		
 		averageSize = (averageSize*(n-1) + messageSize)/n;
 		averageTime = (averageTime*(n-1) + messageTime)/n;

@@ -1,7 +1,6 @@
 package storm.runnable;
 
 import java.io.File;
-
 import java.io.FileInputStream;
 import java.util.Properties;
 
@@ -28,6 +27,7 @@ import storm.kafka.KafkaSpout;
 import storm.kafka.SpoutConfig;
 import storm.kafka.ZkHosts;
 import storm.kafka.bolt.KafkaBolt;
+import storm.mapper.GenericRecordToKafkaMessageMapper;
 import storm.spout.perftest.KafkaSpoutWithTimestamp;
 
 /**
@@ -203,6 +203,7 @@ public class StormTopology {
         }
         
         kafkaBolt.withTopicSelector(new SimpleTopicSelector(outputTopicNamePrefix));
+        kafkaBolt.withTupleToKafkaMapper(new GenericRecordToKafkaMessageMapper());
     	return kafkaBolt;
     }
 

@@ -69,9 +69,9 @@ public class VerifierBolt extends BaseRichBolt {
 		
 		// if the source is verifier, then the message was read from the target topic
 		if(input.getSourceComponent().startsWith("verifier")) {
-			handleLists(fromTarget, fromSource, new String(input.getBinaryByField("message")));
+			handleLists(fromTarget, fromSource, new String(input.getValueByField("message").toString()));
 		} else { // otherwise it is read from the source topic
-			handleLists(fromSource, fromTarget, new String(input.getBinaryByField("message")));
+			handleLists(fromSource, fromTarget, new String(input.getValueByField("message").toString()));
 		}
 		
 		// tuple is created: which value, when was it modified, is it verified or not?

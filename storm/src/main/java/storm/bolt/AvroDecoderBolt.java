@@ -116,12 +116,12 @@ public class AvroDecoderBolt extends BaseRichBolt {
 		String random = null;
 		// binary kafka message
 		byte[] kafkaMessage = getMessage(input);
-		
+		GenericRecord result = null;
         try {
         	// parsing kafka message based on the avro schema
             DatumReader<GenericRecord> reader = new GenericDatumReader<GenericRecord>(schema);
 			Decoder decoder = DecoderFactory.get().binaryDecoder(kafkaMessage, null);
-            GenericRecord result = reader.read(null, decoder);
+            result = reader.read(null, decoder);
             
             random = result.get(RANDOM_FIELD_NAME).toString();
             // format check
@@ -135,9 +135,7 @@ public class AvroDecoderBolt extends BaseRichBolt {
         // composing tuple to emit
         List<Object> delegatedTuple = new ArrayList<Object>();
         delegatedTuple.add(random);
-        // TODO: check if kafka message can be sent
-        //delegatedTuple.add(new String(kafkaMessage));
-        delegatedTuple.add(kafkaMessage);
+        delegatedTuple.add(result);
         if(PERFORMANCE_TEST) {
         	delegatedTuple.add(input.getLongByField("timestamp"));
         }
