@@ -43,6 +43,9 @@ public class AvroSchema implements DeserializationSchema<GenericRecord>, Seriali
 		}
 	}
 
+	/**
+	 * Reusable binary encoder for avro schema serialization
+	 */
 	private BinaryEncoder binaryEncoder = null;
 
 	/**
