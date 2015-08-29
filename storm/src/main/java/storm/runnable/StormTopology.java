@@ -1,7 +1,6 @@
 package storm.runnable;
 
 import java.io.File;
-
 import java.io.FileInputStream;
 import java.util.Properties;
 
@@ -116,9 +115,9 @@ public class StormTopology {
 
         // simple topology: kafka -> avro decoder bolt -> kafka
         TopologyBuilder builder = new TopologyBuilder();
-        builder.setSpout("kafka-spout", kafkaSpout);
-        builder.setBolt("avro-decoder-bolt", new AvroDecoderBolt(randomFieldName, performance)).shuffleGrouping("kafka-spout");
-        builder.setBolt("kafka-bolt", kafkaBolt).shuffleGrouping("avro-decoder-bolt");
+        builder.setSpout("kafka-spout", kafkaSpout, 4);
+        builder.setBolt("avro-decoder-bolt", new AvroDecoderBolt(randomFieldName), 4).shuffleGrouping("kafka-spout");
+        builder.setBolt("kafka-bolt", kafkaBolt, 4).shuffleGrouping("avro-decoder-bolt");
         
         // if verification is needed, topology is extended
         if(verify) {
@@ -135,6 +134,7 @@ public class StormTopology {
         
         // storm config
         Config conf = new Config();
+        //conf.setNumWorkers(4);
         conf.put(KafkaBolt.KAFKA_BROKER_PROPERTIES, props);
         conf.setDebug(true);
         
@@ -219,7 +219,7 @@ public class StormTopology {
      */
 	private static void addVerification(TopologyBuilder builder, ZkHosts zkHosts) {
 		// creating aggregator bolt to collect output of verifier bolts
-		BoltDeclarer verifierAggregatorBolt = builder.setBolt("verifier-aggregator-bolt", new VerifierAggregatorBolt(outputTopicNamePrefix));
+		BoltDeclarer verifierAggregatorBolt = builder.setBolt("verifier-aggregator-bolt", new VerifierAggregatorBolt(outputTopicNamePrefix), 1);
 		// looping through the valueset to create the verifier bolts for them
 		for(String value : randomValueSet) {
 			// creating target topic
@@ -232,12 +232,12 @@ public class StormTopology {
 		    VerifierBolt verifierBolt = new VerifierBolt(value);
 		    
 		    // adding spout of the target topic to the topology
-			builder.setSpout("verifier-kafka-spout-"+targetTopic, verifierSpout);
+			builder.setSpout("verifier-kafka-spout-"+targetTopic, verifierSpout, 1);
 			// connecting an AvroDecoderBolt to it
-			builder.setBolt("verifier-avro-decoder-bolt-"+targetTopic, new AvroDecoderBolt(randomFieldName))
+			builder.setBolt("verifier-avro-decoder-bolt-"+targetTopic, new AvroDecoderBolt(randomFieldName), 1)
 				.shuffleGrouping("verifier-kafka-spout-"+targetTopic);
 			// connecting VerifierBolt to it, that receives messages both from the source and target topics
-			builder.setBolt("verifier-bolt-"+targetTopic, verifierBolt)
+			builder.setBolt("verifier-bolt-"+targetTopic, verifierBolt, 1)
 				.fieldsGrouping("verifier-avro-decoder-bolt-"+targetTopic, new Fields("random"))
 				.fieldsGrouping("avro-decoder-bolt", new Fields("random"));
 			// finally connecting the VerifierBolt to the common aggregator bolt
