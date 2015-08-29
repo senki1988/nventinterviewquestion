@@ -12,6 +12,11 @@ import org.apache.flink.api.common.functions.FilterFunction;
 
 import flink.mapper.ExtractFieldFlatMapper;
 
+/**
+ * The purpose of this filter is to allow only the messages with random field = {@link #VALUE}
+ * @author senki
+ *
+ */
 public class FilterByValue implements FilterFunction<byte[]> {
 
 	/**
@@ -42,12 +47,20 @@ public class FilterByValue implements FilterFunction<byte[]> {
 		}
 	}
 	
+	/**
+	 * Constructor
+	 * @param value value to allow
+	 * @param randomFieldName name of the random field on the avro schema
+	 */
 	public FilterByValue(String value, String randomFieldName) {
 		RANDOM_FIELD_NAME = randomFieldName;
 		VALUE=value;
 	}
 	
-
+	/**
+	 * Filter function: deserializes message by using avro schema and allow only those
+	 * that has {@link #VALUE} value in the random field
+	 */
 	@Override
 	public boolean filter(byte[] value) throws Exception {
 		try {

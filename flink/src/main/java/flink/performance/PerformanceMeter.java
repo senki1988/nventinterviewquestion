@@ -3,6 +3,11 @@ package flink.performance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The purpose of this class is to store indicators for performance measurement
+ * @author senki
+ *
+ */
 public class PerformanceMeter {
 	
 	/**
