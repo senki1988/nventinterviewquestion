@@ -7,21 +7,22 @@ import java.util.Properties;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.api.java.typeutils.runtime.kryo.Serializers.AvroSchemaSerializer;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.streaming.api.datastream.GroupedDataStream;
 import org.apache.flink.streaming.api.datastream.SplitDataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.api.KafkaSink;
 import org.apache.flink.streaming.connectors.kafka.api.persistent.PersistentKafkaSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import flink.function.ClonerSelector;
-import flink.function.ExtractFieldFlatMapper;
-import flink.function.SelectorMapper;
-import flink.function.TopicSelector;
+import flink.filter.FilterByValue;
+import flink.mapper.ExtractFieldFlatMapper;
+import flink.mapper.ExtractMessageMapper;
+import flink.performance.PerformanceAvroSchema;
+import flink.performance.PerformanceKafkaSink;
 import flink.schema.AvroSchema;
+import flink.selector.ClonerSelector;
+import flink.selector.TopicSelector;
 import flink.sink.VerifierSink;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
@@ -29,8 +30,6 @@ import kafka.consumer.ConsumerConfig;
 import kafka.utils.ZKStringSerializer$;
 
 public class FlinkMain {
-	
-	private static final Logger LOG = LoggerFactory.getLogger(FlinkMain.class);
 	
 	/**
 	 * Application configuration
@@ -77,13 +76,47 @@ public class FlinkMain {
      * Flag if performance test is needed
      */
     private static boolean performance;
-    /**
-     * Flag if the cluster is local or remote
-     */
-    private static boolean local;
 	
 	public static void main(String[] args) throws Exception {
 		
+		checkArgs(args);
+		
+		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+		//env.enableCheckpointing(5000);
+
+		// kafka message stream
+		// kafka message stream
+		DataStream<GenericRecord> sourceTopicStream = env.addSource(createKafkaSource(sourceTopic), sourceTopic);
+		
+		// kafka message is enhanced with the value of random field
+		// and grouping by random field value
+		GroupedDataStream<Tuple2<String, GenericRecord>> groupedStream = 
+				sourceTopicStream.flatMap(new ExtractFieldFlatMapper(randomFieldName)).groupBy(0); 
+		
+		// based on the random field value, topicSelector splits the stream
+		SplitDataStream<Tuple2<String, GenericRecord>> split = groupedStream.split(new TopicSelector());
+		for(String value : randomValueSet) {
+			// each split is for a value
+			DataStream<Tuple2<String, GenericRecord>> targetTopicStream = split.select(value);
+			// extracting kafka message
+			DataStream<GenericRecord> transformedStream = targetTopicStream.flatMap(new ExtractMessageMapper());
+			// send it to the correct topic
+			transformedStream.addSink(createKafkaSink(outputTopicNamePrefix+value));
+		}
+		
+		if(verify) {
+			addVerification(env, sourceTopicStream);
+		}
+		
+		//System.out.println(env.getExecutionPlan());
+		env.execute("Flink stream");
+    }
+
+	/**
+	 * Checking arguments and setting properties
+	 * @param args application arguments
+	 */
+	private static void checkArgs(String[] args) {
 		if(args.length != 1) {
     		throw new RuntimeException("Exactly one parameter is required: the path to the application configuration file");
     	}
@@ -95,48 +128,35 @@ public class FlinkMain {
 		}
 		
 		setProperties();
-		
-		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-		env.enableCheckpointing(5000);
+	}
 
-		DataStream<GenericRecord> sourceTopicStream = env.addSource(createKafkaSource(sourceTopic), sourceTopic);
-		SplitDataStream<GenericRecord> splitsForVerification = null;
-		if(verify) {
-			splitsForVerification = sourceTopicStream.split(new ClonerSelector());
-			sourceTopicStream = splitsForVerification.select("first");			
-		}
-		
-		// grouping by random field value
-		GroupedDataStream<Tuple2<String, GenericRecord>> groupedStream = sourceTopicStream.flatMap(new ExtractFieldFlatMapper(randomFieldName)).groupBy(0);
-		
-		TopicSelector topicSelector = new TopicSelector();
-		SplitDataStream<Tuple2<String, GenericRecord>> split = groupedStream.split(topicSelector);
+	/**
+	 * Adds verification part to the topology
+	 * @param env flink stream execution environment
+	 * @param sourceTopicStream source datastream from kafka topic
+	 */
+	private static void addVerification(final StreamExecutionEnvironment env, DataStream<GenericRecord> sourceTopicStream) {
+		// index for the current split
+		int splitIndex = 0;
+		// splitting the original stream to the number of target topics +1
+		SplitDataStream<GenericRecord> splitsForVerification = sourceTopicStream.split(new ClonerSelector(randomValueSet.length+1));
+		// first stream is the original
+		sourceTopicStream = splitsForVerification.select(String.valueOf(splitIndex));
+		// the other splits are assigned to the verifier streams
 		for(String value : randomValueSet) {
-			DataStream<Tuple2<String, GenericRecord>> targetTopicStream = split.select(value);
-			DataStream<GenericRecord> transformedStream = targetTopicStream.flatMap(new SelectorMapper());
-			transformedStream.addSink(createKafkaSink(outputTopicNamePrefix+value));
+			String targetTopic = outputTopicNamePrefix+value;
+			// get the next split of the stream
+			DataStream<GenericRecord> verifierStream = splitsForVerification.select(String.valueOf(++splitIndex));
+			// filter by value
+			DataStream<GenericRecord> filteredStream = verifierStream.filter(new FilterByValue(value, randomFieldName));
+			// reading from the target tooic
+			DataStream<GenericRecord> targetTopicSource = env.addSource(createKafkaSource(targetTopic), targetTopic);
+			// merge the splitted stream and the target topic stream to a verifier sink
+			DataStreamSink<GenericRecord> verifierSink = targetTopicSource.union(filteredStream).addSink(new VerifierSink(value));
+			// paralellism is set to 1, to make it easier to handle verification buffer
+			verifierSink.setParallelism(1);
 		}
-
-		if(verify) {
-			DataStream<GenericRecord> verifierStream = splitsForVerification.select("second");
-			DataStream<GenericRecord> connectedStream = null;
-			for(String value : randomValueSet) {
-				String targetTopic = outputTopicNamePrefix+value;
-				DataStream<GenericRecord> targetTopicSource = env.addSource(createKafkaSource(targetTopic), targetTopic);
-				if(connectedStream == null) {
-					connectedStream = targetTopicSource;
-				} else {
-					connectedStream = connectedStream.union(targetTopicSource);
-				}
-			}
-			
-			connectedStream.addSink(new VerifierSink());
-			//verifierStream.addSink(new VerifierSink());
-		}
-		
-		//System.out.println(env.getExecutionPlan());
-		env.execute("Flink stream");
-    }
+	}
 
 	/**
 	 * Creates kafka source for the topic {@link #sourceTopic}
@@ -151,8 +171,7 @@ public class FlinkMain {
         consumerProps.put("group.id", consumerId);
         consumerProps.put("auto.commit.enable", "false");
 		ConsumerConfig consumerConfig = new ConsumerConfig(consumerProps);
-		
-		return new PersistentKafkaSource<GenericRecord>(topic, new AvroSchema(), consumerConfig);
+		return new PersistentKafkaSource<GenericRecord>(topic, performance ? new PerformanceAvroSchema() : new AvroSchema(), consumerConfig);
 	}
 
 	/**
@@ -168,7 +187,11 @@ public class FlinkMain {
 		producerProps.put("zk.connect", zookeeper+zookeeperRoot); 
 		producerProps.put("broker.id", 0); 
 		
-		return new KafkaSink<GenericRecord>(kafka, topic, producerProps, new AvroSchema());
+		if(performance) {
+			return new PerformanceKafkaSink<GenericRecord>(kafka, topic, producerProps, new AvroSchema());
+		} else {
+			return new KafkaSink<GenericRecord>(kafka, topic, producerProps, new AvroSchema());
+		}
 	}
 	
 	/**
@@ -186,7 +209,6 @@ public class FlinkMain {
         randomValueSet = applicationConfiguration.getProperty("avro.valueset", "").split(",");
         verify = Boolean.parseBoolean(applicationConfiguration.getProperty("verify", "false"));
         performance = Boolean.parseBoolean(applicationConfiguration.getProperty("performance", "false"));
-        local = Boolean.parseBoolean(applicationConfiguration.getProperty("local", "true"));
 	}
     
     /**

@@ -1,4 +1,4 @@
-package flink.function;
+package flink.mapper;
 
 import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.api.common.functions.FlatMapFunction;
@@ -31,7 +31,7 @@ public class ExtractFieldFlatMapper implements FlatMapFunction<GenericRecord, Tu
 	}
 
 	/**
-	 * This function extract the {@link #RANDOM_FIELD_NAME} from the input and creates a tuple of that value and the whole record
+	 * This function extract the {@link #RANDOM_FIELD_NAME} from the input and creates a tuple of that value and the kafka message
 	 */
 	@Override
 	public void flatMap(GenericRecord value, Collector<Tuple2<String, GenericRecord>> out) throws Exception {
