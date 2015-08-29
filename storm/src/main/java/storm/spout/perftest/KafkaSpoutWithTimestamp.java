@@ -36,8 +36,8 @@ public class KafkaSpoutWithTimestamp extends KafkaSpout {
 		 */
 		@Override
 		public Iterable<List<Object>> deserialize(byte[] ser) {
-			Iterable<List<Object>> ret = super.deserialize(ser);
 			PerformanceMeter.messageRead();
+			Iterable<List<Object>> ret = super.deserialize(ser);
 			return ret;
 		}
 	}
