@@ -108,7 +108,7 @@ public class FlinkMain {
 			addVerification(env, sourceTopicStream);
 		}
 		
-		//System.out.println(env.getExecutionPlan());
+		System.out.println(env.getExecutionPlan());
 		env.execute("Flink stream");
     }
 
@@ -149,7 +149,7 @@ public class FlinkMain {
 			DataStream<GenericRecord> verifierStream = splitsForVerification.select(String.valueOf(++splitIndex));
 			// filter by value
 			DataStream<GenericRecord> filteredStream = verifierStream.filter(new FilterByValue(value, randomFieldName));
-			// reading from the target tooic
+			// reading from the target topic
 			DataStream<GenericRecord> targetTopicSource = env.addSource(createKafkaSource(targetTopic), targetTopic);
 			// merge the splitted stream and the target topic stream to a verifier sink
 			DataStreamSink<GenericRecord> verifierSink = targetTopicSource.union(filteredStream).addSink(new VerifierSink(value));
