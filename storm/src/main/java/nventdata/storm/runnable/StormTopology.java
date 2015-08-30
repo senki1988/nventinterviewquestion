@@ -92,7 +92,7 @@ public class StormTopology {
     /**
      * Number of workers
      */
-    private static int parallelism = 1;
+    private static int parallelism = 4;
     
 
     public static void main(String[] args) throws AlreadyAliveException, InvalidTopologyException {
@@ -133,7 +133,7 @@ public class StormTopology {
         // storm config
         Config conf = new Config();
         //conf.setNumWorkers(parallelism);
-        conf.setNumWorkers(4);
+        //conf.setNumWorkers(4);
         conf.put(KafkaBolt.KAFKA_BROKER_PROPERTIES, props);
         conf.setDebug(true);
         
