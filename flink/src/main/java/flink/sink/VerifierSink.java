@@ -57,12 +57,10 @@ public class VerifierSink implements SinkFunction<byte[]> {
 			buffer.add(valueString);
 		}
 		
-		long nano = System.nanoTime();
-		long millis = nano/1000000;
 		boolean verified = buffer.isEmpty();
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-		String time = sdf.format(new Date(millis)) + String.valueOf(nano%1000000);
-		String not = verified ? "" : "NOT";
+		String time = sdf.format(new Date(System.currentTimeMillis()));
+		String not = verified ? "" : "NOT ";
 		
 		LOGGER.info("Topic {} is {} VERIFIED at {}",TOPIC, not, time);
 	}
