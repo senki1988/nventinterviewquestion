@@ -64,7 +64,7 @@
           <descriptor>src/assembly/dep.xml</descriptor>
 	      <archive>
 	        <manifest>
-	          <mainClass>storm.runnable.StormTopology</mainClass>
+	          <mainClass>nventdata.storm.runnable.StormTopology</mainClass>
 	        </manifest>
 	      </archive>
 	    </configuration>
