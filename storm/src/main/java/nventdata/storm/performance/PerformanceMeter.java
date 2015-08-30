@@ -1,4 +1,4 @@
-package storm.performance;
+package nventdata.storm.performance;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

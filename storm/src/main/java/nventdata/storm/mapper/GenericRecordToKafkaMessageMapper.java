@@ -1,4 +1,4 @@
-package storm.mapper;
+package nventdata.storm.mapper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

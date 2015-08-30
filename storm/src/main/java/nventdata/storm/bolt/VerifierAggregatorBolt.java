@@ -1,4 +1,4 @@
-package storm.bolt;
+package nventdata.storm.bolt;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;

@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+
+<configuration scan="true" scanPeriod="60 seconds">
+
+ <appender name="stormTopology" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>storm.log</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+      <fileNamePattern>storm.log.%i</fileNamePattern>
+      <minIndex>1</minIndex>
+      <maxIndex>9</maxIndex>
+    </rollingPolicy>
+
+    <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+      <maxFileSize>100MB</maxFileSize>
+    </triggeringPolicy>
+
+    <encoder>
+      <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSZZ} %c{1} [%p] %m%n</pattern>
+    </encoder>
+ </appender>
+
+ <appender name="def" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>storm_root.log</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+      <fileNamePattern>storm_root.log.%i</fileNamePattern>
+      <minIndex>1</minIndex>
+      <maxIndex>9</maxIndex>
+    </rollingPolicy>
+
+    <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+      <maxFileSize>100MB</maxFileSize>
+    </triggeringPolicy>
+
+    <encoder>
+      <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSZZ} %c{1} [%p] %m%n</pattern>
+    </encoder>
+ </appender>
+
+  <root level="INFO">
+    <appender-ref ref="def"/>
+  </root>
+
+  <logger name="nventdata.storm">
+    <level value="DEBUG" />
+    <appender-ref ref="stormTopology" />
+  </logger>
+</configuration>

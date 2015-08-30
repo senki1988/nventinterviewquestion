@@ -10,7 +10,7 @@
 	<entry key="kafka.targettopicprefix">random</entry>
 	<entry key="avro.fieldname">random</entry>
 	<entry key="avro.valueset">1,2,3</entry>
-	<entry key="verify">true</entry>
-	<entry key="performance">false</entry>
+	<entry key="verify">false</entry>
+	<entry key="performance">true</entry>
 	<entry key="local">true</entry>
 </properties>

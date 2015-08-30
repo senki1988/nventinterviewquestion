@@ -1,8 +1,8 @@
-package storm.bolt.perftest;
+package nventdata.storm.bolt.perftest;
 
 import backtype.storm.tuple.Tuple;
+import nventdata.storm.performance.PerformanceMeter;
 import storm.kafka.bolt.KafkaBolt;
-import storm.performance.PerformanceMeter;
 
 /**
  * Wrapper around {@link KafkaBolt} in order to measure performance
