@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.util.Properties;
 
 import org.I0Itec.zkclient.ZkClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import backtype.storm.Config;
 import backtype.storm.LocalCluster;
@@ -36,6 +38,8 @@ import storm.kafka.bolt.KafkaBolt;
  *
  */
 public class StormTopology {
+	
+	private static final Logger LOGGER = LoggerFactory.getLogger(StormTopology.class);
 	
 	/**
 	 * Application configuration
@@ -89,17 +93,7 @@ public class StormTopology {
     
 
     public static void main(String[] args) throws AlreadyAliveException, InvalidTopologyException {
-    	if(args.length != 1) {
-    		throw new RuntimeException("Exactly one parameter is required: the path to the application configuration file");
-    	}
-    	String applicationConfigurationPath = args[0];
-		try {
-			applicationConfiguration.loadFromXML(new FileInputStream(new File(applicationConfigurationPath)));
-		} catch (Exception e) {
-			throw new RuntimeException("Application configuration file not found or cannot be parsed",e);
-		}
-		
-		setProperties();
+    	checkArgs(args);
 		
 		// creating source topic if it does not exist
 		createTopic(sourceTopic);
@@ -143,16 +137,34 @@ public class StormTopology {
         if(local) {
 	        LocalCluster cluster = new LocalCluster();
 	        cluster.submitTopology("stormTopology", conf, builder.createTopology());
-	        Utils.sleep(100000);
+	        Utils.sleep(100000000);
 	        cluster.killTopology("stormTopology");
 	        cluster.shutdown();
         } else {
-        	conf.setNumWorkers(20);
+        	conf.setNumWorkers(4);
         	conf.setMaxSpoutPending(5000);
 			StormSubmitter.submitTopology("stormTopology", conf, builder.createTopology());
         }
        
     }
+
+    /**
+	 * Checking arguments and setting properties
+	 * @param args application arguments
+	 */
+	private static void checkArgs(String[] args) {
+		if(args.length != 1) {
+    		throw new RuntimeException("Exactly one parameter is required: the path to the application configuration file");
+    	}
+    	String applicationConfigurationPath = args[0];
+		try {
+			applicationConfiguration.loadFromXML(new FileInputStream(new File(applicationConfigurationPath)));
+		} catch (Exception e) {
+			throw new RuntimeException("Application configuration file not found or cannot be parsed",e);
+		}
+		
+		setProperties();
+	}
     
     /**
      * Sets properties based on the given configuration and default values
@@ -170,6 +182,32 @@ public class StormTopology {
         verify = Boolean.parseBoolean(applicationConfiguration.getProperty("verify", "false"));
         performance = Boolean.parseBoolean(applicationConfiguration.getProperty("performance", "false"));
         local = Boolean.parseBoolean(applicationConfiguration.getProperty("local", "true"));
+        
+        LOGGER.info("The following properties are set: \n" 
+    			+ "Zookeeper root: {}\n"
+    			+ "Zookeeper url: {}\n"
+    			+ "Kafka url: {}\n"
+    			+ "Kafka consumer id: {}\n"
+    			+ "Kafka source topic name: {}\n"
+    			+ "Kafka target topic name prefix: {}\n"
+    			+ "Avro field name: {}\n"
+    			+ "Avro valueset: {}\n"
+    			+ "Verification enabled: {}\n"
+    			+ "Performance mesaurement enabled: {}\n"
+    			+ "Local enabled: {}\n",
+    			zookeeperRoot,
+    			zookeeper,
+    			kafka,
+    			consumerId,
+    			sourceTopic,
+    			outputTopicNamePrefix,
+    			randomFieldName,
+    			randomValueSet,
+    			verify,
+    			performance,
+    			local
+    		);
+        
 	}
 
 	/**
@@ -179,6 +217,7 @@ public class StormTopology {
      * @return instance of KafkaSpout with or without performance measurement wrapper
      */
     private static KafkaSpout createKafkaSpout(SpoutConfig kafkaConfig, boolean performance) {
+    	LOGGER.info("Creating KafkaSpout for topic {}", sourceTopic);
     	KafkaSpout kafkaSpout = null;
     	if(performance) {
         	kafkaSpout = new KafkaSpoutWithTimestamp(kafkaConfig);
@@ -220,6 +259,7 @@ public class StormTopology {
      * @param randomValueSet the possible values of the random field
      */
 	private static void addVerification(TopologyBuilder builder, ZkHosts zkHosts) {
+		LOGGER.info("Adding verification part");
 		// creating aggregator bolt to collect output of verifier bolts
 		BoltDeclarer verifierAggregatorBolt = builder.setBolt("verifier-aggregator-bolt", new VerifierAggregatorBolt(outputTopicNamePrefix), 1);
 		// looping through the valueset to create the verifier bolts for them
@@ -256,8 +296,9 @@ public class StormTopology {
 		try {
 			ZkClient zkClient = new ZkClient(zookeeper, 10000, 10000, ZKStringSerializer$.MODULE$);
 			AdminUtils.createTopic(zkClient, targetTopic, 1, 1, new Properties());
+			LOGGER.info("Topic {} is created.", targetTopic);
 		} catch(TopicExistsException e) {
-			
+			LOGGER.debug("Topic {} already exists", targetTopic);
 		}
 	}
 
