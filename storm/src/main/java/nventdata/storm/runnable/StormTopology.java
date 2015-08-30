@@ -90,6 +90,10 @@ public class StormTopology {
      * Flag if the cluster is local or remote
      */
     private static boolean local;
+    /**
+     * Number of workers
+     */
+    private static int parallelism = 1;
     
 
     public static void main(String[] args) throws AlreadyAliveException, InvalidTopologyException {
@@ -110,9 +114,9 @@ public class StormTopology {
 
         // simple topology: kafka -> avro decoder bolt -> kafka
         TopologyBuilder builder = new TopologyBuilder();
-        builder.setSpout("kafka-spout", kafkaSpout, 4);
-        builder.setBolt("avro-decoder-bolt", new AvroDecoderBolt(randomFieldName), 4).shuffleGrouping("kafka-spout");
-        builder.setBolt("kafka-bolt", kafkaBolt, 4).shuffleGrouping("avro-decoder-bolt");
+        builder.setSpout("kafka-spout", kafkaSpout, parallelism);
+        builder.setBolt("avro-decoder-bolt", new AvroDecoderBolt(randomFieldName), parallelism).shuffleGrouping("kafka-spout");
+        builder.setBolt("kafka-bolt", kafkaBolt, parallelism).shuffleGrouping("avro-decoder-bolt");
         
         // if verification is needed, topology is extended
         if(verify) {
@@ -129,7 +133,8 @@ public class StormTopology {
         
         // storm config
         Config conf = new Config();
-        //conf.setNumWorkers(4);
+        //conf.setNumWorkers(parallelism);
+        conf.setNumWorkers(4);
         conf.put(KafkaBolt.KAFKA_BROKER_PROPERTIES, props);
         conf.setDebug(true);
         
@@ -141,7 +146,7 @@ public class StormTopology {
 	        cluster.killTopology("stormTopology");
 	        cluster.shutdown();
         } else {
-        	conf.setNumWorkers(4);
+        	conf.setNumWorkers(parallelism);
         	conf.setMaxSpoutPending(5000);
 			StormSubmitter.submitTopology("stormTopology", conf, builder.createTopology());
         }
