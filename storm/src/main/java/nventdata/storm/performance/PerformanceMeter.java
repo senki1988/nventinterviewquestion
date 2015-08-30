@@ -65,7 +65,7 @@ public class PerformanceMeter {
 		
 		averageSize = (averageSize*(numberOfWrittenMessages-1) + messageSize)/numberOfWrittenMessages;
 		
-		if(numberOfWrittenMessages == numberOfReadMessages) {
+		if(numberOfWrittenMessages == numberOfReadMessages && earliestMessage!=null) {
 			double averageThroughputRecords = 1000*numberOfWrittenMessages/((latestMessage-earliestMessage)/1000000.0);
 			double averageThroughputBytes = averageSize*averageThroughputRecords;
 			
