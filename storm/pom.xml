@@ -53,21 +53,39 @@
 	    <artifactId>maven-assembly-plugin</artifactId>
         <executions>
           <execution>
+            <id>create-archive-for-storm</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+            <configuration>
+	          <descriptor>src/assembly/dep.xml</descriptor>
+	          <archive>
+	            <manifest>
+	              <mainClass>nventdata.storm.runnable.StormTopology</mainClass>
+	            </manifest>
+	          </archive>
+	        </configuration>
+          </execution>
+          <execution>
             <id>create-archive</id>
             <phase>package</phase>
             <goals>
               <goal>single</goal>
             </goals>
+            <configuration>
+	          <descriptorRefs>
+	            <descriptorRef>jar-with-dependencies</descriptorRef>
+	          </descriptorRefs>
+	          <archive>
+	            <manifest>
+	              <mainClass>nventdata.storm.runnable.StormTopology</mainClass>
+	            </manifest>
+	          </archive>
+	        </configuration>
           </execution>
         </executions>
-	    <configuration>
-          <descriptor>src/assembly/dep.xml</descriptor>
-	      <archive>
-	        <manifest>
-	          <mainClass>nventdata.storm.runnable.StormTopology</mainClass>
-	        </manifest>
-	      </archive>
-	    </configuration>
+	    
 	  </plugin>
     </plugins>
   </build>
