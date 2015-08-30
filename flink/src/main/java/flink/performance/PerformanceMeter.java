@@ -75,10 +75,6 @@ public class PerformanceMeter {
 				numberOfWrittenMessages, averageThroughputBytes,
 				numberOfWrittenMessages, averageThroughputRecords
 			);
-			System.out.println(
-					"\nAvg throughput of "+numberOfWrittenMessages+" messages: "+averageThroughputBytes+" bytes/second"
-							+ "\nAvg throughput of "+numberOfWrittenMessages+" messages: "+averageThroughputRecords+" records/second"
-					);
 		}
 		
 	}
