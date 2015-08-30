@@ -1,4 +1,4 @@
-package storm.bolt;
+package nventdata.storm.bolt;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

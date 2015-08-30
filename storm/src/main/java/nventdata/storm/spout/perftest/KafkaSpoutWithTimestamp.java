@@ -1,11 +1,11 @@
-package storm.spout.perftest;
+package nventdata.storm.spout.perftest;
 
 import java.util.List;
 
 import backtype.storm.spout.RawMultiScheme;
+import nventdata.storm.performance.PerformanceMeter;
 import storm.kafka.KafkaSpout;
 import storm.kafka.SpoutConfig;
-import storm.performance.PerformanceMeter;
 
 /**
  * Wrapper around {@link KafkaSpout} in order to measure performance

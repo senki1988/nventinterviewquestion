@@ -1,4 +1,4 @@
-package storm.bolt;
+package nventdata.storm.bolt;
 
 import backtype.storm.tuple.Tuple;
 import storm.kafka.bolt.selector.KafkaTopicSelector;
