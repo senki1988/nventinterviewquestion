@@ -7,6 +7,8 @@ import java.util.List;
 
 import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The purpose of this class is to verify results by 
@@ -15,6 +17,8 @@ import org.apache.flink.streaming.api.functions.sink.SinkFunction;
  *
  */
 public class VerifierSink implements SinkFunction<GenericRecord> {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(VerifierSink.class);
 
 	/**
 	 * Serialization ID
@@ -59,7 +63,6 @@ public class VerifierSink implements SinkFunction<GenericRecord> {
 		String time = sdf.format(new Date(System.currentTimeMillis()));
 		String not = verified ? "" : "NOT ";
 		
-		System.out.println("Topic " + TOPIC + " is " + not + "VERIFIED at " + time);
-		
+		LOGGER.info("Topic {} is {} VERIFIED at {}",TOPIC, not, time);
 	}
 }

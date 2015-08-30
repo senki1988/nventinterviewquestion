@@ -14,6 +14,8 @@ import org.apache.flink.streaming.api.datastream.SplitDataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.api.KafkaSink;
 import org.apache.flink.streaming.connectors.kafka.api.persistent.PersistentKafkaSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import flink.filter.FilterByValue;
 import flink.mapper.ExtractFieldFlatMapper;
@@ -30,6 +32,9 @@ import kafka.consumer.ConsumerConfig;
 import kafka.utils.ZKStringSerializer$;
 
 public class FlinkMain {
+	
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(FlinkMain.class);
 	
 	/**
 	 * Application configuration
@@ -85,7 +90,6 @@ public class FlinkMain {
 		//env.enableCheckpointing(5000);
 
 		// kafka message stream
-		// kafka message stream
 		DataStream<GenericRecord> sourceTopicStream = env.addSource(createKafkaSource(sourceTopic), sourceTopic);
 		
 		// kafka message is enhanced with the value of random field
@@ -96,6 +100,7 @@ public class FlinkMain {
 		// based on the random field value, topicSelector splits the stream
 		SplitDataStream<Tuple2<String, GenericRecord>> split = groupedStream.split(new TopicSelector());
 		for(String value : randomValueSet) {
+			LOGGER.debug("Configuring stream for value {}", value);
 			// each split is for a value
 			DataStream<Tuple2<String, GenericRecord>> targetTopicStream = split.select(value);
 			// extracting kafka message
@@ -108,7 +113,8 @@ public class FlinkMain {
 			addVerification(env, sourceTopicStream);
 		}
 		
-		System.out.println(env.getExecutionPlan());
+		//System.out.println(env.getExecutionPlan());
+		LOGGER.info("Executink stream...");
 		env.execute("Flink stream");
     }
 
@@ -136,6 +142,7 @@ public class FlinkMain {
 	 * @param sourceTopicStream source datastream from kafka topic
 	 */
 	private static void addVerification(final StreamExecutionEnvironment env, DataStream<GenericRecord> sourceTopicStream) {
+		LOGGER.info("Adding verification part");
 		// index for the current split
 		int splitIndex = 0;
 		// splitting the original stream to the number of target topics +1
@@ -144,6 +151,7 @@ public class FlinkMain {
 		sourceTopicStream = splitsForVerification.select(String.valueOf(splitIndex));
 		// the other splits are assigned to the verifier streams
 		for(String value : randomValueSet) {
+			LOGGER.debug("Configuring verifier stream for value {}", value);
 			String targetTopic = outputTopicNamePrefix+value;
 			// get the next split of the stream
 			DataStream<GenericRecord> verifierStream = splitsForVerification.select(String.valueOf(++splitIndex));
@@ -163,6 +171,7 @@ public class FlinkMain {
 	 * @return kafka source
 	 */
 	private static PersistentKafkaSource<GenericRecord> createKafkaSource(String topic) {
+		LOGGER.info("Creating KafkaSource for topic {}", topic);
 		// creating source topic if it does not exist
 		createTopic(topic);
 		
@@ -180,6 +189,7 @@ public class FlinkMain {
 	 * @return kafka sink for the topic that blongs to the value
 	 */
 	private static KafkaSink<GenericRecord> createKafkaSink(String topic) {
+		LOGGER.info("Creating KafkaSink for topic {}", topic);
 		Properties producerProps = new Properties();
 		producerProps.put("metadata.broker.list", kafka);
 		producerProps.put("producer.type", "sync");
@@ -209,6 +219,30 @@ public class FlinkMain {
         randomValueSet = applicationConfiguration.getProperty("avro.valueset", "").split(",");
         verify = Boolean.parseBoolean(applicationConfiguration.getProperty("verify", "false"));
         performance = Boolean.parseBoolean(applicationConfiguration.getProperty("performance", "false"));
+        
+        LOGGER.info("The following properties are set: \n" 
+        			+ "Zookeeper root: {}\n"
+        			+ "Zookeeper url: {}\n"
+        			+ "Kafka url: {}\n"
+        			+ "Kafka consumer id: {}\n"
+        			+ "Kafka source topic name: {}\n"
+        			+ "Kafka target topic name prefix: {}\n"
+        			+ "Avro field name: {}\n"
+        			+ "Avro valueset: {}\n"
+        			+ "Verification enabled: {}\n"
+        			+ "Performance mesaurement enabled: {}\n",
+        			zookeeperRoot,
+        			zookeeper,
+        			kafka,
+        			consumerId,
+        			sourceTopic,
+        			outputTopicNamePrefix,
+        			randomFieldName,
+        			randomValueSet,
+        			verify,
+        			performance
+        		);
+        
 	}
     
     /**
@@ -220,8 +254,9 @@ public class FlinkMain {
 		try {
 			ZkClient zkClient = new ZkClient(zookeeper, 10000, 10000, ZKStringSerializer$.MODULE$);
 			AdminUtils.createTopic(zkClient, targetTopic, 1, 1, new Properties());
+			LOGGER.info("Topic {} is created.", targetTopic);
 		} catch(TopicExistsException e) {
-			
+			LOGGER.debug("Topic {} already exists", targetTopic);
 		}
 	}
 
