@@ -40,7 +40,7 @@
     <appender-ref ref="def"/>
   </root>
 
-  <logger name="storm">
+  <logger name="nventdata.storm">
     <level value="DEBUG" />
     <appender-ref ref="stormTopology" />
   </logger>
