@@ -49,26 +49,11 @@ public class AvroDecoderBolt extends BaseRichBolt {
 	private final String RANDOM_FIELD_NAME;
 	
 	/**
-	 * Flag for indicating performance test mode
-	 */
-	private final boolean PERFORMANCE_TEST;
-	
-	/**
-	 * Constructor
-	 * @param perftest flag for performance test mode
-	 * @param randomFieldName name of the field in the avro scheme that contains the value on which the separation is done. 
-	 */
-	public AvroDecoderBolt(String randomFieldName, boolean perftest) {
-		PERFORMANCE_TEST = perftest;
-		RANDOM_FIELD_NAME = randomFieldName;
-	}
-	
-	/**
 	 * Constructor without performance test mode
 	 * @param randomFieldName name of the field in the avro scheme that contains the value on which the separation is done. 
 	 */
 	public AvroDecoderBolt(String randomFieldName) {
-		this(randomFieldName, false);
+		RANDOM_FIELD_NAME = randomFieldName;
 	}
 	
 	/**
@@ -138,9 +123,6 @@ public class AvroDecoderBolt extends BaseRichBolt {
         // TODO: check if kafka message can be sent
         //delegatedTuple.add(new String(kafkaMessage));
         delegatedTuple.add(kafkaMessage);
-        if(PERFORMANCE_TEST) {
-        	delegatedTuple.add(input.getLongByField("timestamp"));
-        }
 		collector.emit(delegatedTuple);
         collector.ack(input);
 	}
@@ -153,9 +135,6 @@ public class AvroDecoderBolt extends BaseRichBolt {
 		List<String> fields = new ArrayList<String>();
 		fields.add("random");
 		fields.add("message");
-		if(PERFORMANCE_TEST) {
-			fields.add("timestamp");
-		}
 		declarer.declare(new Fields(fields));
 	}
 
