@@ -1,12 +1,7 @@
 package flink.filter;
 
-import java.io.IOException;
-
-import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.api.common.functions.FilterFunction;
-
-import flink.mapper.ExtractFieldFlatMapper;
 
 /**
  * The purpose of this filter is to allow only the messages with random field = {@link #VALUE}
@@ -29,20 +24,7 @@ public class FilterByValue implements FilterFunction<GenericRecord> {
 	 * The name of the field in the avro scheme that contains the value on which the separation is done. 
 	 */
 	private final String RANDOM_FIELD_NAME;
-	
-	/**
-	 * Avro schema
-	 */
-	private static Schema schema;
-	static {
-		Schema.Parser parser = new Schema.Parser();
-		try {
-			schema = parser.parse(ExtractFieldFlatMapper.class.getResourceAsStream("/kafkatest.avsc"));
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
-	}
-	
+		
 	/**
 	 * Constructor
 	 * @param value value to allow
