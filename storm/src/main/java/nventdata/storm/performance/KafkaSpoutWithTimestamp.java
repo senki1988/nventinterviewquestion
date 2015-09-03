@@ -1,9 +1,8 @@
-package nventdata.storm.spout.perftest;
+package nventdata.storm.performance;
 
 import java.util.List;
 
 import backtype.storm.spout.RawMultiScheme;
-import nventdata.storm.performance.PerformanceMeter;
 import storm.kafka.KafkaSpout;
 import storm.kafka.SpoutConfig;
 

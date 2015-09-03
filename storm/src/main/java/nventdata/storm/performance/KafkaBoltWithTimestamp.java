@@ -1,7 +1,6 @@
-package nventdata.storm.bolt.perftest;
+package nventdata.storm.performance;
 
 import backtype.storm.tuple.Tuple;
-import nventdata.storm.performance.PerformanceMeter;
 import storm.kafka.bolt.KafkaBolt;
 
 /**
